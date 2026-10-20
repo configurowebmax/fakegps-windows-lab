@@ -1,5 +1,9 @@
 # FakeGPS para Windows
 
+## Vista previa
+
+![FakeGPS para Windows](docs/fakegps-windows-lab.jpeg)
+
 Driver UMDF y herramientas de laboratorio para probar ubicaciones GPS simuladas en Windows 10/11.
 
 > Uso previsto: laboratorio, capacitación y pruebas controladas. No usar para evadir controles de ubicación, identidad o seguridad.

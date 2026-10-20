@@ -237,6 +237,7 @@ _Pvt_Extensions
 *.png
 *.jpg
 *.jpeg
+!docs/fakegps-windows-lab.jpeg
 *.cer
 *.pfx
 *.key
