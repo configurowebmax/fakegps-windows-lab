@@ -1,5 +1,9 @@
 # FakeGPS para Windows
 
+## Presentación interactiva
+
+[Ver FakeGPS Windows Lab en GitHub Pages](https://configurowebmax.github.io/fakegps-windows-lab/fakegps-windows-lab.html)
+
 ## Vista previa
 
 ![FakeGPS para Windows](docs/fakegps-windows-lab.jpeg)
