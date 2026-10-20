@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FakeGPS Windows Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-light: #FFFFFF;
+    --bg-soft: #F8FAFC;
+    --bg-muted: #F1F5F9;
+    --bg-dark: #0F172A;
+    --bg-dark-2: #111C33;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --text-on-dark: #F8FAFC;
+    --text-on-dark-muted: #94A3B8;
+    --accent: #2563EB;
+    --accent-soft: #DBEAFE;
+    --accent-dark: #1D4ED8;
+    --border: #E2E8F0;
+    --border-dark: #1E293B;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+
+  /* ============= DECK ============= */
+  .deck {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0s linear 0.5s;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .slide.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    transition: opacity 0.6s ease, transform 0.6s ease, visibility 0s linear 0s;
+    z-index: 2;
+  }
+
+  /* Slide background themes */
+  .slide.light { background: var(--bg-light); color: var(--text-primary); }
+  .slide.soft { background: var(--bg-soft); color: var(--text-primary); }
+  .slide.dark { background: var(--bg-dark); color: var(--text-on-dark); }
+
+  /* ============= NAV / COUNTER ============= */
+  .nav-controls {
+    position: fixed;
+    bottom: 22px;
+    right: 28px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+  }
+  .nav-controls .counter {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.06);
+    color: var(--text-secondary);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .nav-controls.dark .counter {
+    background: rgba(248, 250, 252, 0.08);
+    color: var(--text-on-dark-muted);
+  }
+  .nav-btn {
+    pointer-events: auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.9);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .nav-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .nav-controls.dark .nav-btn {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(248, 250, 252, 0.12);
+    color: var(--text-on-dark-muted);
+  }
+  .nav-controls.dark .nav-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .nav-btn svg { width: 14px; height: 14px; }
+
+  /* ============= TOP BAR (slides 2-6) ============= */
+  .topbar {
+    position: absolute;
+    top: 36px;
+    left: 64px;
+    right: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 10;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .topbar .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .topbar .brand-mark {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 12px rgba(37, 99, 235, 0.6);
+  }
+  .topbar .section-tag {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ============= SLIDE 1 — COVER ============= */
+  .cover {
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(ellipse 60% 50% at 75% 30%, rgba(37, 99, 235, 0.18), transparent 70%),
+      radial-gradient(ellipse 40% 40% at 20% 80%, rgba(37, 99, 235, 0.10), transparent 70%),
+      var(--bg-dark);
+  }
+
+  /* Decorative grid */
+  .cover::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+    background-size: 64px 64px;
+    background-position: -1px -1px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent 80%);
+    pointer-events: none;
+  }
+
+  .cover-inner {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 0 80px;
+    max-width: 1100px;
+  }
+
+  .cover-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.12);
+    border: 1px solid rgba(37, 99, 235, 0.35);
+    color: #93C5FD;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+  .cover-badge .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #60A5FA;
+    box-shadow: 0 0 10px #60A5FA;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  .cover-title {
+    font-size: clamp(54px, 8vw, 112px);
+    font-weight: 800;
+    line-height: 0.98;
+    letter-spacing: -0.04em;
+    color: var(--text-on-dark);
+    margin-bottom: 28px;
+  }
+  .cover-title .accent {
+    background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .cover-subtitle {
+    font-size: clamp(18px, 1.8vw, 22px);
+    font-weight: 400;
+    color: var(--text-on-dark-muted);
+    letter-spacing: -0.005em;
+    line-height: 1.5;
+    max-width: 640px;
+    margin: 0 auto 48px;
+  }
+
+  .cover-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 28px;
+    padding: 12px 24px;
+    border-radius: 12px;
+    background: rgba(248, 250, 252, 0.04);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-on-dark-muted);
+    text-transform: uppercase;
+  }
+  .cover-meta .divider {
+    width: 1px;
+    height: 12px;
+    background: rgba(148, 163, 184, 0.2);
+  }
+  .cover-meta .label-strong { color: var(--text-on-dark); font-weight: 500; }
+
+  /* Floating decor shapes */
+  .cover-decor {
+    position: absolute;
+    pointer-events: none;
+  }
+  .decor-1 {
+    top: 14%;
+    right: 8%;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.18), transparent 70%);
+    filter: blur(20px);
+  }
+  .decor-2 {
+    bottom: 12%;
+    left: 6%;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(96, 165, 250, 0.10), transparent 70%);
+    filter: blur(30px);
+  }
+
+  /* ============= SLIDE 2 — SPLIT ============= */
+  .split {
+    padding: 96px 64px 80px;
+    align-items: stretch;
+    gap: 56px;
+  }
+  .split-image {
+    flex: 1.05;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg-muted);
+    box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.18);
+  }
+  .split-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .split-image::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 60%, rgba(15, 23, 42, 0.35) 100%);
+  }
+  .split-image .img-tag {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 2;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .split-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 12px 0;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 24px;
+    height: 1.5px;
+    background: var(--accent);
+  }
+  .split-title {
+    font-size: clamp(36px, 4.5vw, 56px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin-bottom: 28px;
+    color: var(--text-primary);
+  }
+  .split-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .split-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    font-size: 18px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+  .split-list li .num {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+  .split-list li strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  /* ============= SLIDE 3 — BIG STATEMENT ============= */
+  .statement {
+    align-items: center;
+    justify-content: center;
+    padding: 80px;
+    text-align: center;
+    background: var(--bg-light);
+  }
+  .statement::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(37, 99, 235, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(37, 99, 235, 0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+  .statement-inner {
+    position: relative;
+    z-index: 2;
+    max-width: 1000px;
+  }
+  .statement-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 40px;
+  }
+  .statement-text {
+    font-size: clamp(34px, 4.4vw, 60px);
+    font-weight: 600;
+    line-height: 1.18;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+    max-width: 980px;
+  }
+  .statement-text .accent {
+    color: var(--accent);
+  }
+  .statement-text .underline {
+    position: relative;
+    display: inline-block;
+  }
+  .statement-text .underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -4px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .statement-footnote {
+    margin-top: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .statement-footnote .line {
+    width: 48px;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ============= SLIDE 4 — CAPABILITIES (2 ICON TILES) ============= */
+  .capabilities {
+    padding: 100px 64px 80px;
+    flex-direction: column;
+    background: var(--bg-soft);
+  }
+  .capabilities-head {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+  .capabilities-head .eyebrow {
+    justify-content: center;
+  }
+  .capabilities-head .eyebrow::before { display: none; }
+  .capabilities-title {
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--text-primary);
+  }
+  .capabilities-sub {
+    margin-top: 14px;
+    color: var(--text-secondary);
+    font-size: 17px;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+  .capabilities-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    max-width: 1120px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .cap-card {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px 36px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  .cap-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .cap-card .icon-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: var(--accent-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    color: var(--accent);
+  }
+  .cap-card .icon-wrap svg {
+    width: 28px;
+    height: 28px;
+  }
+  .cap-card .cap-num {
+    position: absolute;
+    top: 28px;
+    right: 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+  .cap-card h3 {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+  }
+  .cap-card p {
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+  }
+  .cap-card .cap-meta {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    gap: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .cap-card .cap-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .cap-card .cap-meta .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* ============= SLIDE 5 — TIMELINE ============= */
+  .timeline-slide {
+    padding: 100px 64px 80px;
+    flex-direction: column;
+    background: var(--bg-light);
+  }
+  .timeline-head {
+    margin-bottom: 60px;
+  }
+  .timeline-head .eyebrow::before { display: none; }
+  .timeline-head .eyebrow { color: var(--accent); }
+  .timeline-title {
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--text-primary);
+  }
+  .timeline-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 1180px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    width: 100%;
+    position: relative;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    top: 28px;
+    left: 12%;
+    right: 12%;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+  .timeline::after {
+    content: "";
+    position: absolute;
+    top: 28px;
+    left: 12%;
+    width: 76%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+    z-index: 0;
+  }
+  .tl-step {
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    padding: 0 12px;
+  }
+  .tl-node {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--bg-light);
+    border: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    position: relative;
+    box-shadow: 0 0 0 6px var(--bg-light), 0 8px 24px -8px rgba(37, 99, 235, 0.4);
+  }
+  .tl-node::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: var(--accent);
+    z-index: -1;
+    opacity: 0;
+  }
+  .tl-step.active .tl-node {
+    background: var(--accent);
+    color: white;
+  }
+  .tl-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  .tl-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    max-width: 200px;
+    margin: 0 auto;
+  }
+  .tl-step .tl-tag {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    background: var(--bg-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  /* ============= SLIDE 6 — CARD GRID (3 cards) ============= */
+  .grid-slide {
+    padding: 100px 64px 80px;
+    flex-direction: column;
+    background: var(--bg-soft);
+  }
+  .grid-head {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+  .grid-head .eyebrow {
+    justify-content: center;
+  }
+  .grid-head .eyebrow::before { display: none; }
+  .grid-title {
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--text-primary);
+  }
+  .grid-sub {
+    margin-top: 14px;
+    color: var(--text-secondary);
+    font-size: 17px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    max-width: 1180px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .grid-card {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px 32px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .grid-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px -12px rgba(15, 23, 42, 0.12);
+  }
+  .grid-card .corner-num {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+  .grid-card .icon-box {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent-soft), rgba(219, 234, 254, 0.4));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 22px;
+    color: var(--accent);
+  }
+  .grid-card .icon-box svg { width: 26px; height: 26px; }
+  .grid-card h3 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    line-height: 1.25;
+  }
+  .grid-card p {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    flex: 1;
+  }
+  .grid-card .card-foot {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .grid-card .card-foot svg { width: 12px; height: 12px; }
+
+  /* ============= SLIDE 7 — CLOSING (DARK) ============= */
+  .closing {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 80px;
+    background:
+      radial-gradient(ellipse 50% 50% at 50% 30%, rgba(37, 99, 235, 0.16), transparent 70%),
+      var(--bg-dark);
+  }
+  .closing::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent 80%);
+    pointer-events: none;
+  }
+  .closing-inner {
+    position: relative;
+    z-index: 2;
+    max-width: 880px;
+  }
+  .closing-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.12);
+    border: 1px solid rgba(37, 99, 235, 0.35);
+    color: #93C5FD;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+  .closing-tag .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #60A5FA;
+    box-shadow: 0 0 10px #60A5FA;
+  }
+  .closing-title {
+    font-size: clamp(40px, 5.5vw, 72px);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    color: var(--text-on-dark);
+    margin-bottom: 28px;
+  }
+  .closing-title .accent {
+    background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .closing-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 22px;
+    border-radius: 12px;
+    background: rgba(248, 250, 252, 0.05);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--text-on-dark);
+    text-decoration: none;
+    margin-top: 8px;
+    transition: all 0.25s ease;
+  }
+  .closing-link:hover {
+    background: rgba(37, 99, 235, 0.18);
+    border-color: rgba(37, 99, 235, 0.5);
+  }
+  .closing-link svg { width: 16px; height: 16px; color: #60A5FA; }
+  .closing-foot {
+    margin-top: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-on-dark-muted);
+  }
+  .closing-foot .sep {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(148, 163, 184, 0.4);
+  }
+
+  /* ============= PROGRESS BAR ============= */
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    z-index: 200;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(37, 99, 235, 0.6);
+  }
+
+  /* ============= HINT ============= */
+  .hint {
+    position: fixed;
+    bottom: 22px;
+    left: 28px;
+    z-index: 100;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  .hint.dark { color: var(--text-on-dark-muted); }
+  .hint kbd {
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.06);
+    border: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 10px;
+  }
+  .hint.dark kbd {
+    background: rgba(248, 250, 252, 0.05);
+    border-color: rgba(148, 163, 184, 0.18);
+    color: var(--text-on-dark-muted);
+  }
+
+  /* ============= RESPONSIVE ============= */
+  @media (max-width: 900px) {
+    .split { flex-direction: column; padding: 80px 32px 60px; gap: 32px; }
+    .split-image { min-height: 240px; max-height: 320px; }
+    .capabilities-grid { grid-template-columns: 1fr; }
+    .card-grid { grid-template-columns: 1fr; }
+    .timeline { grid-template-columns: 1fr 1fr; gap: 40px 12px; }
+    .timeline::before, .timeline::after { display: none; }
+    .topbar { left: 32px; right: 32px; }
+    .capabilities, .timeline-slide, .grid-slide, .split, .statement, .closing, .cover-inner { padding-left: 32px; padding-right: 32px; }
+    .closing-foot { flex-direction: column; gap: 12px; }
+  }
+
+  /* ============= PRINT ============= */
+  @media print {
+    html, body { width: 1280px; height: auto; overflow: visible; background: white; }
+    .deck { width: 1280px; height: auto; }
+    .slide {
+      position: relative;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transform: none !important;
+      page-break-after: always;
+      break-after: page;
+      width: 1280px;
+      height: 720px;
+    }
+    .nav-controls, .hint, .progress { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress" style="width: 14.28%;"></div>
+
+<div class="deck" id="deck">
+
+  <!-- ============= SLIDE 1 — COVER (DARK) ============= -->
+  <section class="slide dark cover active" data-slide="1">
+    <div class="cover-decor decor-1" aria-hidden="true" data-decor></div>
+    <div class="cover-decor decor-2" aria-hidden="true" data-decor></div>
+    <div class="cover-inner">
+      <div class="cover-badge">
+        <span class="dot"></span>
+        <span>Proyecto / Open Source</span>
+      </div>
+      <h1 class="cover-title">
+        FakeGPS<br>
+        <span class="accent">Windows Lab</span>
+      </h1>
+      <p class="cover-subtitle">Simulación de ubicación para QA y Desarrollo.</p>
+      <div class="cover-meta">
+        <span><span class="label-strong">Windows</span> · Native</span>
+        <span class="divider"></span>
+        <span>QA <span class="label-strong">Automation</span></span>
+        <span class="divider"></span>
+        <span><span class="label-strong">GPX</span> / Lat-Long</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============= SLIDE 2 — SPLIT ============= -->
+  <section class="slide light split" data-slide="2">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span>FakeGPS · Windows Lab</span>
+      </div>
+      <span><span class="section-tag">01</span> / Contexto</span>
+    </div>
+
+    <div class="split-image">
+      <span class="img-tag">GPS / Map UI</span>
+      <img src="https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/aca0f66f508f.jpg" alt="Smartphone mostrando interfaz GPS con mapa de navegación">
+    </div>
+
+    <div class="split-text">
+      <span class="eyebrow">El Problema</span>
+      <h2 class="split-title">El Desafío<br>Físico</h2>
+      <ul class="split-list">
+        <li>
+          <span class="num">01</span>
+          <span><strong>Probar apps logísticas exige movimiento</strong> real entre coordenadas.</span>
+        </li>
+        <li>
+          <span class="num">02</span>
+          <span><strong>Emuladores nativos lentos</strong> y con latencia elevada.</span>
+        </li>
+        <li>
+          <span class="num">03</span>
+          <span><strong>Imposible automatizar QA</strong> en la calle con cobertura completa.</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============= SLIDE 3 — BIG STATEMENT (LIGHT) ============= -->
+  <section class="slide light statement" data-slide="3">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span>FakeGPS · Windows Lab</span>
+      </div>
+      <span><span class="section-tag">02</span> / Enfoque</span>
+    </div>
+
+    <div class="statement-inner">
+      <span class="statement-tag">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Solución
+      </span>
+      <h2 class="statement-text">
+        Un entorno controlado<br>
+        para <span class="underline">inyectar coordenadas</span><br>
+        directamente en <span class="accent">Windows</span>.
+      </h2>
+      <div class="statement-footnote">
+        <span class="line"></span>
+        <span>Sin hardware físico</span>
+        <span class="line"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============= SLIDE 4 — CAPABILITIES (LIGHT) ============= -->
+  <section class="slide light capabilities" data-slide="4">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span>FakeGPS · Windows Lab</span>
+      </div>
+      <span><span class="section-tag">03</span> / Capacidades</span>
+    </div>
+
+    <div class="capabilities-head">
+      <span class="eyebrow">Capacidades Core</span>
+      <h2 class="capabilities-title">Dos modos de simulación</h2>
+      <p class="capabilities-sub">Estático para puntos fijos, dinámico para rutas con velocidad variable.</p>
+    </div>
+
+    <div class="capabilities-grid">
+      <div class="cap-card">
+        <span class="cap-num">MODO 01</span>
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <h3>Coordenadas Estáticas</h3>
+        <p>Inyección directa de latitud y longitud en el emulador para pruebas puntuales.</p>
+        <div class="cap-meta">
+          <span><span class="dot"></span>Lat / Long</span>
+          <span><span class="dot"></span>Instantáneo</span>
+        </div>
+      </div>
+
+      <div class="cap-card">
+        <span class="cap-num">MODO 02</span>
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
+            <circle cx="6.5" cy="16.5" r="2.5"/>
+            <circle cx="16.5" cy="16.5" r="2.5"/>
+          </svg>
+        </div>
+        <h3>Simulación GPX</h3>
+        <p>Trayectos reales con velocidad variable, replicando rutas logísticas completas.</p>
+        <div class="cap-meta">
+          <span><span class="dot"></span>.gpx files</span>
+          <span><span class="dot"></span>Speed var</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============= SLIDE 5 — TIMELINE (LIGHT) ============= -->
+  <section class="slide light timeline-slide" data-slide="5">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span>FakeGPS · Windows Lab</span>
+      </div>
+      <span><span class="section-tag">04</span> / Workflow</span>
+    </div>
+
+    <div class="timeline-head">
+      <span class="eyebrow">Implementación</span>
+      <h2 class="timeline-title">Implementación en 4 Pasos</h2>
+    </div>
+
+    <div class="timeline-wrap">
+      <div class="timeline">
+        <div class="tl-step active">
+          <div class="tl-node">01</div>
+          <div class="tl-label">Clonar repositorio</div>
+          <p class="tl-desc">Git clone del proyecto desde GitHub.</p>
+          <span class="tl-tag">git clone</span>
+        </div>
+        <div class="tl-step active">
+          <div class="tl-node">02</div>
+          <div class="tl-label">Configurar emulador</div>
+          <p class="tl-desc">Ajustar Android emulator en Windows.</p>
+          <span class="tl-tag">setup.bat</span>
+        </div>
+        <div class="tl-step active">
+          <div class="tl-node">03</div>
+          <div class="tl-label">Ejecutar scripts</div>
+          <p class="tl-desc">Inyección de coordenadas vía CLI.</p>
+          <span class="tl-tag">node inject</span>
+        </div>
+        <div class="tl-step active">
+          <div class="tl-node">04</div>
+          <div class="tl-label">Validar aplicación</div>
+          <p class="tl-desc">Verificar comportamiento en QA.</p>
+          <span class="tl-tag">QA pass</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============= SLIDE 6 — CARD GRID (LIGHT) ============= -->
+  <section class="slide light grid-slide" data-slide="6">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span>FakeGPS · Windows Lab</span>
+      </div>
+      <span><span class="section-tag">05</span> / IA Stack</span>
+    </div>
+
+    <div class="grid-head">
+      <span class="eyebrow">Stack Inteligente</span>
+      <h2 class="grid-title">Potenciado por IA</h2>
+      <p class="grid-sub">Tres capas de automatización para acelerar el ciclo de QA.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="grid-card">
+        <span class="corner-num">01</span>
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <h3>UnoRouter + Cline</h3>
+        <p>Scripts generados por IA para automatizar la inyección de coordenadas.</p>
+        <div class="card-foot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <span>AI Generated</span>
+        </div>
+      </div>
+
+      <div class="grid-card">
+        <span class="corner-num">02</span>
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <line x1="9" y1="9" x2="15" y2="9"/>
+            <line x1="9" y1="13" x2="15" y2="13"/>
+            <line x1="9" y1="17" x2="13" y2="17"/>
+          </svg>
+        </div>
+        <h3>Modelos Locales</h3>
+        <p>Análisis de logs con Qwen para detectar anomalías en tiempo real.</p>
+        <div class="card-foot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <span>Qwen Local</span>
+        </div>
+      </div>
+
+      <div class="grid-card">
+        <span class="corner-num">03</span>
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v4"/>
+            <path d="M12 18v4"/>
+            <path d="M4.93 4.93l2.83 2.83"/>
+            <path d="M16.24 16.24l2.83 2.83"/>
+            <path d="M2 12h4"/>
+            <path d="M18 12h4"/>
+            <path d="M4.93 19.07l2.83-2.83"/>
+            <path d="M16.24 7.76l2.83-2.83"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </div>
+        <h3>Automatización</h3>
+        <p>Pruebas QA sin intervención humana durante el ciclo completo.</p>
+        <div class="card-foot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <span>Zero Touch</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============= SLIDE 7 — CLOSING (DARK) ============= -->
+  <section class="slide dark closing" data-slide="7">
+    <div class="closing-inner">
+      <div class="closing-tag">
+        <span class="dot"></span>
+        <span>Cierre</span>
+      </div>
+      <h2 class="closing-title">
+        Despliegues sin<br>
+        <span class="accent">fallos geográficos</span>
+      </h2>
+      <a href="https://github.com/configurowebmax/fakegps-windows-lab" class="closing-link" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        github.com/configurowebmax/fakegps-windows-lab
+      </a>
+      <div class="closing-foot">
+        <span>FakeGPS Windows Lab</span>
+        <span class="sep"></span>
+        <span>v1.0 · 2025</span>
+        <span class="sep"></span>
+        <span>QA · Dev · Windows</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ============= NAV CONTROLS ============= -->
+<div class="hint" id="hint">
+  <kbd>←</kbd><kbd>→</kbd>
+  <span>navegar</span>
+</div>
+
+<div class="nav-controls" id="navControls">
+  <button class="nav-btn" id="prevBtn" aria-label="Anterior">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <span class="counter"><span id="current">1</span> / <span id="total">7</span></span>
+  <button class="nav-btn" id="nextBtn" aria-label="Siguiente">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+</div>
+
+<script>
+(function () {
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  const currentEl = document.getElementById('current');
+  const totalEl = document.getElementById('total');
+  const progress = document.getElementById('progress');
+  const navControls = document.getElementById('navControls');
+  const hint = document.getElementById('hint');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+
+  let idx = 0;
+  totalEl.textContent = total;
+
+  function isDarkSlide(slide) {
+    return slide.classList.contains('dark');
+  }
+
+  function render() {
+    slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+    currentEl.textContent = idx + 1;
+    progress.style.width = ((idx + 1) / total) * 100 + '%';
+
+    // Toggle dark mode UI on nav + hint
+    const dark = isDarkSlide(slides[idx]);
+    navControls.classList.toggle('dark', dark);
+    hint.classList.toggle('dark', dark);
+  }
+
+  function next() {
+    if (idx < total - 1) { idx++; render(); }
+  }
+  function prev() {
+    if (idx > 0) { idx--; render(); }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { idx = 0; render(); }
+    else if (e.key === 'End') { idx = total - 1; render(); }
+  });
+
+  prevBtn.addEventListener('click', prev);
+  nextBtn.addEventListener('click', next);
+
+  // Touch swipe
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
+  }, { passive: true });
+
+  render();
+})();
+</script>
+
+</body>
+</html>
